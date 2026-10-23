@@ -1,0 +1,55 @@
+name: Build What's I Do APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "Whats_I_Do_APK_Source.zip"
+      - ".github/workflows/build-apk.yml"
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare HTML app
+        run: |
+          mkdir -p www
+          unzip -o Whats_I_Do_APK_Source.zip -d www
+          test -f www/index.html
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Create Capacitor Android project
+        run: |
+          npm init -y
+          npm install @capacitor/core@6.2.1 @capacitor/android@6.2.1
+          npm install --save-dev @capacitor/cli@6.2.1
+          npx cap init "What's I Do" "com.whatsido.app" --web-dir www
+          npx cap add android
+          npx cap sync android
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Whats-I-Do-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
